@@ -6,9 +6,7 @@ const filterType = {
   PENDING: "PENDING",
 };
 
-
-const AddTodo = ( { addTodo }) => {
-
+const AddTodo = ({ addTodo }) => {
   const handleKeyPress = (event) => {
     if (event.key === "Enter") {
       const input = event.target;
@@ -18,7 +16,7 @@ const AddTodo = ( { addTodo }) => {
         input.value = "";
       }
     }
-  }
+  };
 
   return (
     <input
@@ -29,17 +27,24 @@ const AddTodo = ( { addTodo }) => {
   );
 };
 
-const TodoFilter = ({handleFilter}) => {
-
+const TodoFilter = ({ handleFilter }) => {
   return (
     <div className="center-content">
       <a href="#" id="filter-all" onClick={() => handleFilter(filterType.ALL)}>
         Todos os itens
       </a>
-      <a href="#" id="filter-done" onClick={() => handleFilter(filterType.DONE)}>
+      <a
+        href="#"
+        id="filter-done"
+        onClick={() => handleFilter(filterType.DONE)}
+      >
         Concluídos
       </a>
-      <a href="#" id="filter-pending" onClick={() => handleFilter(filterType.PENDING)}>
+      <a
+        href="#"
+        id="filter-pending"
+        onClick={() => handleFilter(filterType.PENDING)}
+      >
         Pendentes
       </a>
     </div>
@@ -47,12 +52,10 @@ const TodoFilter = ({handleFilter}) => {
 };
 
 const TodoItem = ({ todo, markTodoAsDone }) => {
-  
   const handleClick = () => {
     markTodoAsDone(todo.id);
-  }
+  };
 
-  
   return (
     <>
       {todo.done ? (
@@ -68,40 +71,100 @@ const TodoItem = ({ todo, markTodoAsDone }) => {
 };
 
 const TodoList = () => {
-  const [todos, setTodos] = useState([{id: crypto.randomUUID(), text: "Learn React", done: false }, {id: crypto.randomUUID(), text: "Learn JS", done: true }]);
+  const [todos, setTodos] = useState([]);
   const [filter, setFilter] = useState(filterType.ALL);
+
   const filteredList = todos.filter((item) => {
     if (filter === filterType.ALL) return true;
     if (filter === filterType.PENDING) return !item.done;
     if (filter === filterType.DONE) return item.done;
   });
+
   console.log(filter);
   console.log(todos);
 
+  useEffect(() => {
+    console.log("useEffect");
+    const fetchTodos = async () => {
+      try {
+        const response = await fetch("http://localhost:3000/todos");
+        if (!response.ok) {
+          throw new Error("Erro ao buscar os dados");
+        }
+        const data = await response.json();
+        setTodos(data);
+      } catch (error) {
+        console.error("Erro ao buscar os dados:", error);
+      }
+    };
+
+    fetchTodos();
+  }, [filter]);
+
   const addTodo = (text) => {
     const newTodo = { id: crypto.randomUUID(), text, done: false };
-    setTodos((prevTodos) => [...prevTodos, newTodo]);
-  }
+    fetch("http://localhost:3000/todos", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newTodo),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Erro ao realizar o Post");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Post bem-sucedido");
+        setTodos((prevTodos) => [...prevTodos, newTodo]);
+      })
+      .catch((error) => {
+        throw new Error("Erro ao inserir nova task");
+      });
+  };
 
   const markTodoAsDone = (id) => {
-    setTodos((prevTodos) =>
-      prevTodos.map((todo) =>
-        todo.id === id ? { ...todo, done: true } : todo
-      )
-    );
-  }
+    const URL_PUT = `http://localhost:3000/todos/${id}`;
+    const task = todos.find((todo) => todo.id === id);
+
+    const newTask = { ...task, done: true };
+
+    fetch(URL_PUT, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newTask),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Erro ao realizar o PUT");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Put bem-sucedido");
+        setTodos((prevTodos) =>
+          prevTodos.map((todo) => (todo.id === id ? data : todo))
+        );
+      })
+      .catch((error) => {
+        throw new Error("Erro ao atualizar task");
+      });
+  };
 
   const handleFilter = (newFilter) => setFilter(newFilter);
 
-
   return (
     <>
-      <h1>Todo List</h1>
+      <h1>To-Do List</h1>
       <div className="center-content">
         Versão inicial da aplicação de lista de tarefas para a disciplina
         SPODWE2
       </div>
-      <TodoFilter handleFilter={handleFilter}/>
+      <TodoFilter handleFilter={handleFilter} />
       <AddTodo addTodo={addTodo} />
       <ul id="todo-list">
         {filteredList.map((todo, index) => (
